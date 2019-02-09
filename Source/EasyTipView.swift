@@ -242,6 +242,7 @@ open class EasyTipView: UIView {
     fileprivate var arrowTip = CGPoint.zero
     fileprivate(set) open var preferences: Preferences
     public let text: String
+    public let attributedText: NSAttributedString?
     
     // MARK: - Lazy variables -
     
@@ -255,7 +256,13 @@ open class EasyTipView: UIView {
         var attributes = [NSAttributedStringKey.font : self.preferences.drawing.font]
         #endif
         
-        var textSize = self.text.boundingRect(with: CGSize(width: self.preferences.positioning.maxWidth, height: CGFloat.greatestFiniteMagnitude), options: NSStringDrawingOptions.usesLineFragmentOrigin, attributes: attributes, context: nil).size
+        var textSize: CGSize!
+        
+        if let _attributedText = self.attributedText {
+            textSize = _attributedText.boundingRect(with: CGSize(width: self.preferences.positioning.maxWidth, height: CGFloat.greatestFiniteMagnitude), options: NSStringDrawingOptions.usesLineFragmentOrigin, context: nil).size
+        } else {
+            textSize = self.text.boundingRect(with: CGSize(width: self.preferences.positioning.maxWidth, height: CGFloat.greatestFiniteMagnitude), options: NSStringDrawingOptions.usesLineFragmentOrigin, attributes: attributes, context: nil).size
+        }
         
         textSize.width = ceil(textSize.width)
         textSize.height = ceil(textSize.height)
@@ -285,6 +292,27 @@ open class EasyTipView: UIView {
     public init (text: String, preferences: Preferences = EasyTipView.globalPreferences, delegate: EasyTipViewDelegate? = nil){
         
         self.text = text
+        self.attributedText = nil
+        self.preferences = preferences
+        self.delegate = delegate
+        
+        super.init(frame: CGRect.zero)
+        
+        self.backgroundColor = UIColor.clear
+        
+        #if swift(>=4.2)
+        let notificationName = UIDevice.orientationDidChangeNotification
+        #else
+        let notificationName = NSNotification.Name.UIDeviceOrientationDidChange
+        #endif
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(handleRotation), name: notificationName, object: nil)
+    }
+    
+    public init (text: NSAttributedString, preferences: Preferences = EasyTipView.globalPreferences, delegate: EasyTipViewDelegate? = nil){
+        
+        self.text = ""
+        self.attributedText = text
         self.preferences = preferences
         self.delegate = delegate
         
@@ -539,7 +567,11 @@ open class EasyTipView: UIView {
         let attributes = [NSAttributedStringKey.font : preferences.drawing.font, NSAttributedStringKey.foregroundColor : preferences.drawing.foregroundColor, NSAttributedStringKey.paragraphStyle : paragraphStyle]
         #endif
         
-        text.draw(in: textRect, withAttributes: attributes)
+        if let _attributedText = attributedText {
+            _attributedText.draw(in: textRect)
+        } else {
+            text.draw(in: textRect, withAttributes: attributes)
+        }
     }
     
     override open func draw(_ rect: CGRect) {
